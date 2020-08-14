@@ -1,3 +1,9 @@
+// Because of absence of opportunity to store an empty directories in github:
+const fs = require('fs');
+if (!fs.existsSync('users')) {
+    fs.mkdirSync('users');
+}
+
 require('dotenv').config();
 const Telegraf = require('telegraf');
 
