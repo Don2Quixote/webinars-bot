@@ -30,7 +30,7 @@ const handle_private_message = async ctx => {
                 inline_keyboard: [
                     [ { text: '🔐 Приватная группа', callback_data: 'private_group'} ],
                     [ { text: '📂 Каталог', callback_data: 'catalog:back'} ],
-                    [ { text: '✉️ Связаться', url: 't.me/don2quixote' } ]
+                    [ { text: '✉️ Связаться', url: 't.me/' + process.env.ADMIN_USERNAME } ]
                 ]
             }
         });
@@ -149,7 +149,7 @@ const handle_private_message = async ctx => {
                 inline_keyboard: [
                     [ { text: '🔐 Приватная группа', callback_data: 'private_group'} ],
                     [ { text: '📂 Каталог', callback_data: 'catalog:back'} ],
-                    [ { text: '✉️ Связаться', url: 't.me/don2quixote' } ]
+                    [ { text: '✉️ Связаться', url: 't.me/' + process.env.ADMIN_USERNAME } ]
                 ]
             }
         });
