@@ -11,7 +11,7 @@ const handle_group_message = async ctx => {
         for (let new_member of ctx.message.new_chat_members) {
             let user = get_user(new_member.id);
             if (!user || !user.subscription) {
-                if (new_member.id != process.env.ADMIN_ID) {
+                if (new_member.id != process.env.ADMIN_ID && !new_member.is_bot) {
                     try {
                         await ctx.telegram.kickChatMember(process.env.GROUP_ID, new_member.id);
                     } catch (e) {
