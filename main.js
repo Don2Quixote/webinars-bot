@@ -36,7 +36,6 @@ bot.on('callback_query', async ctx => {
 
 bot.launch();
 
-const fs = require('fs');
 const Qiwi = require('./qiwi');
 
 const qiwi = new Qiwi(process.env.QIWI_PUBLIC_KEY, process.env.QIWI_PRIVATE_KEY);
