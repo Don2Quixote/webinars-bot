@@ -1,6 +1,5 @@
 const fetch = require('node-fetch');
 const q = require('@qiwi/bill-payments-node-js-sdk');
-q
 const rand = (min, max) => Math.floor(Math.random() * (max - min + 1) ) + min;
 
 const normalize_date_for_form = date => { // Copy-paste form official sdk Qiwi with changing return
@@ -121,7 +120,3 @@ Qiwi.generate_id = function generate_id() {
 }
 
 module.exports = Qiwi;
-
-// WAITING
-// EXPIRED
-// PAID
