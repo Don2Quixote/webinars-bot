@@ -40,7 +40,15 @@ const COMMANDS_MESSAGE_TEXT =
     '/remove_material\n' +
     'Интересный вебинар\n' +
     'Вступление\n' +
-    '```\n';
+    '```\n' +
+    '\n' +
+    '*/faq* \\- для формирования текста для раздела FAQ. Если текста нет, то кнопка FAQ в меню отображаться не будет\n' +
+    'Например:\n' +
+    '\n' +
+    '```\n' +
+    '/faq\n' +
+    'Текст для раздела FAQ\n' +
+    '```';
 
 
 const handle_callback = async ctx => {
@@ -88,28 +96,30 @@ const handle_callback = async ctx => {
         if (args[0] == 'main') {
             let new_text =
                 '👋 Ты *администратор*\\.\n' +
-                'Чтобы посмотреть команды, нажми на соответствующую кнопку';
+                'Чтобы посмотреть команды, нажми на соответствующую кнопку' ;
+            let keyboard = [
+                [ { text: '🔐 Приватная группа', callback_data: 'private_group'} ],
+                [ { text: '📂 Каталог', callback_data: 'catalog:back'} ],
+                [ { text: '🛠 Команды', callback_data: 'commands:back' } ]
+            ];
+            if (data.faq) {
+                keyboard.push([
+                    { text: 'ℹ️ FAQ', callback_data: 'faq' }
+                ]);
+            }
             if (ctx.update.callback_query.message.caption) {
                 ctx.deleteMessage();
                 ctx.reply(new_text, {
                     parse_mode: 'MarkdownV2',
                     reply_markup: {
-                        inline_keyboard: [
-                            [ { text: '🔐 Приватная группа', callback_data: 'private_group'} ],
-                            [ { text: '📂 Каталог', callback_data: 'catalog:back'} ],
-                            [ { text: '🛠 Команды', callback_data: 'commands:back' } ]
-                        ]
+                        inline_keyboard: keyboard
                     }
-                })
+                });
             } else {
                 ctx.editMessageText(new_text, {
                     parse_mode: 'MarkdownV2',
                     reply_markup: {
-                        inline_keyboard: [
-                            [ { text: '🔐 Приватная группа', callback_data: 'private_group'} ],
-                            [ { text: '📂 Каталог', callback_data: 'catalog:back'} ],
-                            [ { text: '🛠 Команды', callback_data: 'commands:back' } ]
-                        ]
+                        inline_keyboard: keyboard
                     }
                 });
             }
@@ -303,6 +313,18 @@ const handle_callback = async ctx => {
                     }
                 }
             }
+        }
+    } else if (command == 'faq') {
+        if (!data.faq) {
+            ctx.answerCbQuery('Ошибка');
+        } else {
+            ctx.editMessageText(data.faq, {
+                reply_markup: {
+                    inline_keyboard: [
+                        [ { text: '👈 Назад', callback_data: 'back:main' } ]
+                    ]
+                }
+            });
         }
     }
 }

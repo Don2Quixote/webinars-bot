@@ -2,7 +2,10 @@ const fs = require('fs');
 const Qiwi = require('./qiwi');
 const md = require('./md_friendly');
 
-const qiwi = new Qiwi(process.env.QIWI_PUBLIC_KEY, process.env.QIWI_PRIVATE_KEY);
+let qiwi;
+if (process.env.QIWI_PRIVATE_KEY) {
+    qiwi = new Qiwi(process.env.QIWI_PUBLIC_KEY, process.env.QIWI_PRIVATE_KEY);
+}
 
 const get_data = () => JSON.parse(fs.readFileSync('data.json', 'utf8'));
 const save_data = data => fs.writeFileSync('data.json', JSON.stringify(data));
@@ -114,6 +117,19 @@ const handle_callback = async ctx => {
                 ]
             }
         });
+    } else if (command == 'faq') {
+        if (!data.faq) {
+            ctx.answerCbQuery('Ошибка');
+        } else {
+            ctx.answerCbQuery('');
+            ctx.editMessageText(data.faq, {
+                reply_markup: {
+                    inline_keyboard: [
+                        [ { text: '👈 Назад', callback_data: 'back:main' } ]
+                    ]
+                }
+            });
+        }
     } else if (command == 'catalog') {
         let new_text =
             '📂 Каталог';
@@ -146,27 +162,32 @@ const handle_callback = async ctx => {
         if (args[0] == 'main') {
             let new_text =
                 '👋 *Добро пожаловать*\\. Выберите, что вас интересует\\.';
+            let keyboard = [
+                [ { text: '🔐 Приватная группа', callback_data: 'private_group'} ],
+                [ { text: '📂 Каталог', callback_data: 'catalog:back'} ],
+            ];
+            if (data.faq) {
+                keyboard.push([
+                    { text: 'ℹ️ FAQ', callback_data: 'faq' }
+                ]);
+            }
+            keyboard.push([
+                { text: '✉️ Связаться', url: 't.me/' + process.env.ADMIN_USERNAME }
+            ]);
             if (ctx.update.callback_query.message.caption) {
                 ctx.deleteMessage();
                 ctx.reply(new_text, {
                     parse_mode: 'MarkdownV2',
                     reply_markup: {
-                        inline_keyboard: [
-                            [ { text: '🔐 Приватная группа', callback_data: 'private_group'} ],
-                            [ { text: '📂 Каталог', callback_data: 'catalog:back'} ],
-                            [ { text: '✉️ Связаться', url: 't.me/' + process.env.ADMIN_USERNAME } ]
-                        ]
+                        inline_keyboard: keyboard
                     }
                 })
             } else {
+                ctx.answerCbQuery('');
                 ctx.editMessageText(new_text, {
                     parse_mode: 'MarkdownV2',
                     reply_markup: {
-                        inline_keyboard: [
-                            [ { text: '🔐 Приватная группа', callback_data: 'private_group'} ],
-                            [ { text: '📂 Каталог', callback_data: 'catalog:back'} ],
-                            [ { text: '✉️ Связаться', url: 't.me/' + process.env.ADMIN_USERNAME } ]
-                        ]
+                        inline_keyboard: keyboard
                     }
                 });
             }

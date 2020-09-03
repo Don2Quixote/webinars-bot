@@ -38,7 +38,11 @@ bot.launch();
 
 const Qiwi = require('./qiwi');
 
-const qiwi = new Qiwi(process.env.QIWI_PUBLIC_KEY, process.env.QIWI_PRIVATE_KEY);
+let qiwi;
+if (process.env.QIWI_PRIVATE_KEY) {
+    console.log(process.env.QIWI_PRIVATE_KEY);
+    qiwi = new Qiwi(process.env.QIWI_PUBLIC_KEY, process.env.QIWI_PRIVATE_KEY);
+}
 
 const get_user = user_id => {
     try { return JSON.parse(fs.readFileSync('users/' + user_id, 'utf8')) }
@@ -51,6 +55,7 @@ const get_bills = () => JSON.parse(fs.readFileSync('bills.json', 'utf8'));
 const save_bills = bills => fs.writeFileSync('bills.json', JSON.stringify(bills));
 
 const check_bills = async () => {
+    if (!qiwi) return;
     let link;
     let bills = get_bills();
     for (let bill of bills) {

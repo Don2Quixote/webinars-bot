@@ -2,7 +2,10 @@ const fs = require('fs');
 const Qiwi = require('./qiwi');
 const md = require('./md_friendly');
 
-const qiwi = new Qiwi(process.env.QIWI_PUBLIC_KEY, process.env.QIWI_PRIVATE_KEY);
+let qiwi;
+if (process.env.QIWI_PRIVATE_KEY) {
+    qiwi = new Qiwi(process.env.QIWI_PUBLIC_KEY, process.env.QIWI_PRIVATE_KEY);
+}
 
 const get_user = user_id => {
     try { return JSON.parse(fs.readFileSync('users/' + user_id, 'utf8')) }
@@ -13,8 +16,11 @@ const save_user = user => fs.writeFileSync('users/' + user.id, JSON.stringify(us
 const get_bills = () => JSON.parse(fs.readFileSync('bills.json', 'utf8'));
 const save_bills = bills => fs.writeFileSync('bills.json', JSON.stringify(bills));
 
+const get_data = () => JSON.parse(fs.readFileSync('data.json', 'utf8'));
+
 const handle_private_message = async ctx => {
     let user = get_user(ctx.from.id);
+    let data = get_data();
     if (!user) {
         user = {
             id: ctx.from.id,
@@ -24,14 +30,22 @@ const handle_private_message = async ctx => {
         save_user(user);
         let reply_text =
             '👋 *Добро пожаловать*\\. Выберите, что вас интересует\\.';
+        let keyboard = [
+            [ { text: '🔐 Приватная группа', callback_data: 'private_group'} ],
+            [ { text: '📂 Каталог', callback_data: 'catalog:back'} ],
+        ];
+        if (data.faq) {
+            keyboard.push([
+                { text: 'ℹ️ FAQ', callback_data: 'faq' }
+            ]);
+        }
+        keyboard.push([
+            { text: '✉️ Связаться', url: 't.me/' + process.env.ADMIN_USERNAME }
+        ]);
         ctx.reply(reply_text, {
             parse_mode: 'MarkdownV2',
             reply_markup: {
-                inline_keyboard: [
-                    [ { text: '🔐 Приватная группа', callback_data: 'private_group'} ],
-                    [ { text: '📂 Каталог', callback_data: 'catalog:back'} ],
-                    [ { text: '✉️ Связаться', url: 't.me/' + process.env.ADMIN_USERNAME } ]
-                ]
+                inline_keyboard: keyboard
             }
         });
         return;
@@ -143,14 +157,22 @@ const handle_private_message = async ctx => {
     } else {
         let reply_text =
             '👋 *Добро пожаловать*\\. Выберите, что вас интересует\\.';
+        let keyboard = [
+            [ { text: '🔐 Приватная группа', callback_data: 'private_group'} ],
+            [ { text: '📂 Каталог', callback_data: 'catalog:back'} ],
+        ];
+        if (data.faq) {
+            keyboard.push([
+                { text: 'ℹ️ FAQ', callback_data: 'faq' }
+            ]);
+        }
+        keyboard.push([
+            { text: '✉️ Связаться', url: 't.me/' + process.env.ADMIN_USERNAME }
+        ]);
         ctx.reply(reply_text, {
             parse_mode: 'MarkdownV2',
             reply_markup: {
-                inline_keyboard: [
-                    [ { text: '🔐 Приватная группа', callback_data: 'private_group'} ],
-                    [ { text: '📂 Каталог', callback_data: 'catalog:back'} ],
-                    [ { text: '✉️ Связаться', url: 't.me/' + process.env.ADMIN_USERNAME } ]
-                ]
+                inline_keyboard: keyboard
             }
         });
     }

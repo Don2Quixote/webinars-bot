@@ -12,16 +12,38 @@ const handle_admin_message = async ctx => {
             let reply_text =
                 '👋 Ты *администратор*\\.\n' +
                 'Чтобы посмотреть команды, нажми на соответствующую кнопку';
+            let keyboard = [
+                [ { text: '🔐 Приватная группа', callback_data: 'private_group'} ],
+                [ { text: '📂 Каталог', callback_data: 'catalog:back'} ],
+                [ { text: '🛠 Команды', callback_data: 'commands:back' } ]
+            ]
+            if (data.faq) {
+                keyboard.push([
+                    { text: 'ℹ️ FAQ', callback_data: 'faq' }
+                ])
+            }
             ctx.reply(reply_text, {
                 parse_mode: 'MarkdownV2',
                 reply_markup: {
-                    inline_keyboard: [
-                        [ { text: '🔐 Приватная группа', callback_data: 'private_group'} ],
-                        [ { text: '📂 Каталог', callback_data: 'catalog:back'} ],
-                        [ { text: '🛠 Команды', callback_data: 'commands:back' } ]
-                    ]
+                    inline_keyboard: keyboard
                 }
             });
+        } else if (text.slice(0, 4) == '/faq') {
+            let [, ...faq_text] = text.split('\n');
+            if (!faq_text.length) {
+                data.faq = '';
+                save_data(data);
+                let reply_text =
+                    'ℹ️ Текст FAQ удалён';
+                ctx.reply(reply_text);
+            } else {
+                faq_text = faq_text.join('\n');
+                data.faq = faq_text;
+                save_data(data);
+                let reply_text =
+                    'ℹ️ Текст FAQ обновлён';
+                ctx.reply(reply_text);
+            }
         } else if (text.slice(0, 12) == '/add_webinar') {
             let [, name, price, ...description] = text.split('\n');
             if (!name || !price || !description) {
