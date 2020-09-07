@@ -73,7 +73,11 @@ function Qiwi(publicKey, privateKey) {
         if (!('publicKey' in options)) params += 'publicKey=' + encodeURIComponent(PUBLIC_KEY);
         return root_url + params;
     }
-this.check_bill = async function check_bill(billId) { let res = await fetch('https://api.qiwi.com/partner/bill/v1/bills/' + billId, { method: 'GET', headers: {
+
+    this.check_bill = async function check_bill(billId) {
+        let res = await fetch('https://api.qiwi.com/partner/bill/v1/bills/' + billId, {
+            method: 'GET',
+            headers: {
                 'Authorization': 'Bearer ' + PRIVATE_KEY,
                 'Accept': 'application/json'
             }
