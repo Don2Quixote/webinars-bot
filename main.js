@@ -54,6 +54,8 @@ const get_uesrs = () => fs.readdirSync('users');
 const get_bills = () => JSON.parse(fs.readFileSync('bills.json', 'utf8'));
 const save_bills = bills => fs.writeFileSync('bills.json', JSON.stringify(bills));
 
+let export_new_chat_link_timeout = null;
+
 const check_bills = async () => {
     if (!qiwi) return;
     let link;
@@ -81,9 +83,10 @@ const check_bills = async () => {
                                 bills = bills.filter(b => b.user_id != bill.user_id);
                             }
                         } else if (bill.purchase.type == 'subscribe') {
+                            clearTimeout(export_new_chat_link_timeout);
                             if (parseInt(bill_info.amount.value) == bill.amount) {
-                                if (user.subscription) {
-                                    user.subscription += 1000 * 60 * 60 * 24 * bill.purchase.days;
+                                if (user.subscriptions[bill.purchase.chat_id]) {
+                                    user.subscriptions[bill.purchase.chat_id] += 1000 * 60 * 60 * 24 * bill.purchase.days;
                                     save_user(user);
                                     bills = bills.filter(b => b.user_id != bill.user_id);
                                     bot.telegram.sendMessage(bill.user_id, '✅ Подписка продлена');
@@ -91,20 +94,20 @@ const check_bills = async () => {
                                         parse_mode: 'MarkdownV2'
                                     });
                                 } else {
-                                    user.subscription = Date.now() + 1000 * 60 * 60 * 24 * bill.purchase.days;
+                                    user.subscriptions[bill.purchase.chat_id] = Date.now() + 1000 * 60 * 60 * 24 * bill.purchase.days;
                                     save_user(user);
                                     bills = bills.filter(b => b.user_id != bill.user_id);
-                                    if (!link) {
-                                        let new_link = await bot.telegram.exportChatInviteLink(process.env.GROUP_ID);
-                                        link = new_link;
-                                    }
+                                    let link = await bot.telegram.exportChatInviteLink(bill.purchase.chat_id);
                                     bot.telegram.sendMessage(bill.user_id, '✅ Подписка оформлена', {
                                         reply_markup: {
                                             inline_keyboard: [
-                                                [ { text: 'Группа', url: link } ]
+                                                [ { text: 'Вступить', url: link } ]
                                             ]
                                         }
                                     });
+                                    export_new_chat_link_timeout = setTimeout(() => {
+                                        bot.telegram.exportChatInviteLink(bill.purchase.chat_id);
+                                    }, 1000 * 60 * 30);
                                     bot.telegram.sendMessage(process.env.ADMIN_ID, '💵 [Пользователь](tg://user?id=' + bill.user_id + ') оформил подписку на ' + bill.purchase.days +' дн\\.', {
                                         parse_mode: 'MarkdownV2'
                                     });
@@ -137,20 +140,22 @@ const check_subs = async () => {
     console.log('Checking subs...');
     for (let user_id of get_uesrs()) {
         let user = get_user(user_id);
-        if (user.subscription && user.subscription < Date.now()) {
-            user.subscription = 0;
-            save_user(user);
-            bot.telegram.sendMessage(user.id, '🕓 Ваша подписка истекла');
-            bot.telegram.sendMessage(process.env.ADMIN_ID, '🕓 У [пользователя](tg://user?id=' + user.id + ') закончилась подписка', {
-                parse_mode: 'MarkdownV2'
-            });
-            try {
-                await bot.telegram.kickChatMember(process.env.GROUP_ID, user.id);
-                await bot.telegram.unbanChatMember(process.env.GROUP_ID, user.id);
-            } catch (e) {
-                console.log(e);
+        for (let subscription in user.subscriptions) {
+            if (user.subscriptions[subscription] < Date.now()) {
+                delete user.subscriptions[subscription];
+                bot.telegram.sendMessage(user.id, '🕓 Ваша подписка истекла');
+                bot.telegram.sendMessage(process.env.ADMIN_ID, '🕓 У [пользователя](tg://user?id=' + user.id + ') закончилась подписка', {
+                    parse_mode: 'MarkdownV2'
+                });
+                try {
+                    await bot.telegram.kickChatMember(subscription, user.id);
+                    await bot.telegram.unbanChatMember(subscription, user.id);
+                } catch (e) {
+                    console.log(e);
+                }
             }
         }
+        save_user(user);
     }
     // setTimeout(check_subs, 1000 * 60 * 60); // Check subs once an hour
     setTimeout(check_subs, 1000 * 60);

@@ -13,7 +13,7 @@ const handle_group_message = async ctx => {
             if (!user || !user.subscription) {
                 if (new_member.id != process.env.ADMIN_ID && !new_member.is_bot) {
                     try {
-                        await ctx.telegram.kickChatMember(process.env.GROUP_ID, new_member.id);
+                        await ctx.telegram.kickChatMember(ctx.message.chat.id, new_member.id);
                     } catch (e) {
                         console.log(e);
                     }

@@ -1,5 +1,4 @@
 const fetch = require('node-fetch');
-const q = require('@qiwi/bill-payments-node-js-sdk');
 const rand = (min, max) => Math.floor(Math.random() * (max - min + 1) ) + min;
 
 const normalize_date_for_form = date => { // Copy-paste form official sdk Qiwi with changing return
@@ -74,11 +73,7 @@ function Qiwi(publicKey, privateKey) {
         if (!('publicKey' in options)) params += 'publicKey=' + encodeURIComponent(PUBLIC_KEY);
         return root_url + params;
     }
-
-    this.check_bill = async function check_bill(billId) {
-        let res = await fetch('https://api.qiwi.com/partner/bill/v1/bills/' + billId, {
-            method: 'GET',
-            headers: {
+this.check_bill = async function check_bill(billId) { let res = await fetch('https://api.qiwi.com/partner/bill/v1/bills/' + billId, { method: 'GET', headers: {
                 'Authorization': 'Bearer ' + PRIVATE_KEY,
                 'Accept': 'application/json'
             }

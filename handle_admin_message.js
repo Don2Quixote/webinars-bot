@@ -13,14 +13,18 @@ const handle_admin_message = async ctx => {
                 '👋 Ты *администратор*\\.\n' +
                 'Чтобы посмотреть команды, нажми на соответствующую кнопку';
             let keyboard = [
-                [ { text: '🔐 Приватная группа', callback_data: 'private_group'} ],
                 [ { text: '📂 Каталог', callback_data: 'catalog:back'} ],
                 [ { text: '🛠 Команды', callback_data: 'commands:back' } ]
-            ]
+            ];
             if (data.faq) {
                 keyboard.push([
                     { text: 'ℹ️ FAQ', callback_data: 'faq' }
-                ])
+                ]);
+            }
+            if (data.access.length) {
+                keyboard.unshift([
+                    { text: '🔐 Приватный доступ', callback_data: 'private_access' }
+                ]);
             }
             ctx.reply(reply_text, {
                 parse_mode: 'MarkdownV2',
@@ -184,6 +188,82 @@ const handle_admin_message = async ctx => {
                         }
                     });
                 }
+            }
+        } else if (text.slice(0, 12) == '/add_channel') {
+            let [, chat_id, name, price_per_day ] = text.split('\n');
+            if (data.access.find(chat => chat.chat_id == chat_id)) {
+                ctx.reply('❌Вы уже добавили этот канал');
+            } else if (!price_per_day || isNaN(price_per_day)) {
+                ctx.reply('❌Неправильное использование команды');
+            } else {
+                let chat;
+                try {
+                    chat = await ctx.telegram.getChat(chat_id);
+                } catch(e) {}
+                if (!chat) {
+                    ctx.reply('❌ Меня нет в этом канале');
+                } else if (chat.type != 'channel') {
+                    ctx.reply('❌ Это не канал');
+                } else {
+                    data.access.push({
+                        type: 'channel',
+                        chat_id,
+                        name,
+                        price_per_day
+                    });
+                    save_data(data);
+                    let reply_text =
+                        '✅ Канал добавлен';
+                    ctx.reply(reply_text);
+                }
+            }
+        } else if (text.slice(0, 10) == '/add_group') {
+            let [, chat_id, name, price_per_day ] = text.split('\n');
+            if (data.access.find(chat => chat.chat_id == chat_id)) {
+                ctx.reply('❌Вы уже добавили эту группу');
+            } else if (!price_per_day || isNaN(price_per_day)) {
+                ctx.reply('❌Неправильное использование команды');
+            } else {
+                let chat;
+                try {
+                    chat = await ctx.telegram.getChat(chat_id);
+                } catch(e) {}
+                if (!chat) {
+                    ctx.reply('❌ Меня нет в этой группе');
+                } else if (chat.type != 'supergroup') {
+                    ctx.reply('❌ Это не группа');
+                } else {
+                    data.access.push({
+                        type: 'group',
+                        chat_id,
+                        name,
+                        price_per_day
+                    });
+                    save_data(data);
+                    let reply_text =
+                        '✅ Группа добавлен';
+                    ctx.reply(reply_text);
+                }
+            }
+        } else if (text.slice(0, 15) == '/remove_channel') {
+            let [, ...name] = text.split(' ');
+	    name = name.join(' ');
+            if (data.access.find(chat => chat.name == name)) {
+                data.access = data.access.filter(chat => chat.name != name && chat.type == 'channel');
+                save_data(data);
+                ctx.reply('✅ Канал удалён'); 
+            } else {
+                ctx.reply('❌ Вы не добавили этот канал');
+            }
+        } else if (text.slice(0, 13) == '/remove_group') {
+            let [, ...name] = text.split(' ');
+	    name = name.join(' ');
+            if (data.access.find(chat => chat.name == name)) {
+                data.access = data.access.filter(chat => chat.name != name && chat.type == 'group');
+                save_data(data);
+                ctx.reply('✅ Группа удалена'); 
+            } else {
+                ctx.reply('❌ Вы не добавили эту группу');
             }
         } else if (text.slice(0, 1) == '/') {
             let reply_text =

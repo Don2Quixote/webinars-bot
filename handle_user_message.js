@@ -25,18 +25,22 @@ const handle_private_message = async ctx => {
         user = {
             id: ctx.from.id,
             webinars: [],
-            subscription: 0,
+            subscriptions: {}
         };
         save_user(user);
         let reply_text =
             '👋 *Добро пожаловать*\\. Выберите, что вас интересует\\.';
         let keyboard = [
-            [ { text: '🔐 Приватная группа', callback_data: 'private_group'} ],
             [ { text: '📂 Каталог', callback_data: 'catalog:back'} ],
         ];
         if (data.faq) {
             keyboard.push([
                 { text: 'ℹ️ FAQ', callback_data: 'faq' }
+            ]);
+        }
+        if (data.access.length) {
+            keyboard.unshift([
+                { text: '🔐 Приватный доступ', callback_data: 'private_access' }
             ]);
         }
         keyboard.push([
@@ -52,6 +56,7 @@ const handle_private_message = async ctx => {
     }
 
     if (ctx.message.text && !isNaN(ctx.message.text) && parseInt(ctx.message.text) == parseFloat(ctx.message.text)) {
+        return; // Removed ability to select count of days for subscription due to adding feature to add other chats
         let bills = get_bills();
         let active_bill = bills.find(b => b.user_id == ctx.from.id);
         if (active_bill) {
@@ -158,12 +163,16 @@ const handle_private_message = async ctx => {
         let reply_text =
             '👋 *Добро пожаловать*\\. Выберите, что вас интересует\\.';
         let keyboard = [
-            [ { text: '🔐 Приватная группа', callback_data: 'private_group'} ],
             [ { text: '📂 Каталог', callback_data: 'catalog:back'} ],
         ];
         if (data.faq) {
             keyboard.push([
                 { text: 'ℹ️ FAQ', callback_data: 'faq' }
+            ]);
+        }
+        if (data.access.length) {
+            keyboard.unshift([
+                { text: '🔐 Приватный доступ', callback_data: 'private_access' }
             ]);
         }
         keyboard.push([

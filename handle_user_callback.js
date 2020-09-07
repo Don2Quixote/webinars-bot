@@ -59,7 +59,7 @@ const check_bills = async ctx => {
                                     save_user(user);
                                     bills = bills.filter(b => b.user_id != bill.user_id);
                                     if (!link) {
-                                        let new_link = await ctx.telegram.exportChatInviteLink(process.env.GROUP_ID);
+                                        let new_link = await ctx.telegram.exportChatInviteLink(bill.purchase.chat_id);
                                         link = new_link;
                                         console.log(link);
                                     }
@@ -102,7 +102,48 @@ const handle_callback = async ctx => {
     let data = get_data();
     let user = get_user(ctx.from.id);
     if (!user) return;
-    if (command == 'private_group') {
+    if (command == 'private_access') {
+        if (!data.access.length) {
+            ctx.answerCbQuery('ℹ️ Нет доступных чатов');
+        } else {
+            let keyboard = [];
+            for (let chat of data.access) {
+                keyboard.push([
+                    { text: chat.name, callback_data: 'select_chat:' + chat.chat_id }
+                ]);
+            }
+            keyboard.push([
+                { text: '👈 Назад', callback_data: 'back:main' }
+            ]);
+            let new_text =
+                '🔐 Приватный доступ';
+            ctx.editMessageText(new_text, {
+                reply_markup: {
+                    inline_keyboard: keyboard
+                }
+            });
+        }
+    } else if (command == 'select_chat') {
+        let chat = data.access.find(chat => chat.chat_id == args[0]);
+        if (!chat) {
+            ctx.answerCbQuery('ℹ️ Чат не найден');
+        } else {
+            let new_text =
+                '🔐 Чтобы получить доступ, оплатите один из предложенных тарифов. Стоимость 1 дня подписки - ' + chat.price_per_day + 'р.';
+            ctx.editMessageText(new_text, {
+                reply_markup: {
+                    inline_keyboard: [
+                        [
+                            { text: '1 день', callback_data: 'subscribe:' + chat.chat_id + ':1' },
+                            { text: '7 дней', callback_data: 'subscribe:' + chat.chat_id + ':7' },
+                            { text: '30 дней', callback_data: 'subscribe:' + chat.chat_id + ':30' },
+                        ],
+                        [ { text: '👈 Назад', callback_data: 'back:private_access' } ]
+                    ]
+                }
+            });
+        }
+    } else if (command == 'private_group') {
         let new_text =
             '🔐 Чтобы получить доступ к приватной группе, оплатите один из представленных тарифов. Если вы хотите указать другое количество дней - пришлите боту цифру (Не более 180).';
         ctx.editMessageText(new_text, {
@@ -163,12 +204,16 @@ const handle_callback = async ctx => {
             let new_text =
                 '👋 *Добро пожаловать*\\. Выберите, что вас интересует\\.';
             let keyboard = [
-                [ { text: '🔐 Приватная группа', callback_data: 'private_group'} ],
                 [ { text: '📂 Каталог', callback_data: 'catalog:back'} ],
             ];
             if (data.faq) {
                 keyboard.push([
                     { text: 'ℹ️ FAQ', callback_data: 'faq' }
+                ]);
+            }
+            if (data.access.length) {
+                keyboard.unshift([
+                    { text: '🔐 Приватный доступ', callback_data: 'private_access' }
                 ]);
             }
             keyboard.push([
@@ -186,6 +231,27 @@ const handle_callback = async ctx => {
                 ctx.answerCbQuery('');
                 ctx.editMessageText(new_text, {
                     parse_mode: 'MarkdownV2',
+                    reply_markup: {
+                        inline_keyboard: keyboard
+                    }
+                });
+            }
+        } else if (args[0] == 'private_access') {
+            if (!data.access.length) {
+                ctx.answerCbQuery('ℹ️ Нет доступных чатов');
+            } else {
+                let keyboard = [];
+                for (let chat of data.access) {
+                    keyboard.push([
+                        { text: chat.name, callback_data: 'select_chat:' + chat.chat_id }
+                    ]);
+                    keyboard.push([
+                        { text: '👈 Назад', callback_data: 'back:main' }
+                    ]);
+                }
+                let new_text =
+                    '🔐 Приватный доступ';
+                ctx.editMessageText(new_text, {
                     reply_markup: {
                         inline_keyboard: keyboard
                     }
@@ -525,67 +591,73 @@ const handle_callback = async ctx => {
             });
             ctx.answerCbQuery('');
         } else {
-            let days = parseInt(args[0]);
-            let text_days = '';
-            switch (days) {
-                case 1:
-                    text_days = 'день';
-                    break;
-                case 7:
-                case 30:
-                    text_days = 'дней';
-                    break;
-                default: return;
-            }
-            let billId = qiwi.generate_id();
-            let expirationDateTime = qiwi.get_expiration_date_by_day(1 / 24); // 1 Hour to pay
-            let options = {
-                amount: {
-                    currency: 'RUB',
-                    value: parseFloat(process.env.PRICE_PER_DAY * days).toFixed(2),
-                },
-                expirationDateTime: expirationDateTime,
-                customer: {
-                    account: ctx.from.id.toString()
+            let chat = data.access.find(chat => chat.chat_id == args[0]);
+            if (!chat) {
+                ctx.answerCbQuery('❌ Чат не найден');
+            } else {
+                let days = parseInt(args[1]);
+                let text_days = '';
+                switch (days) {
+                    case 1:
+                        text_days = 'день';
+                        break;
+                    case 7:
+                    case 30:
+                        text_days = 'дней';
+                        break;
+                    default: return;
                 }
-            }
-            if (process.env.THEME_CODE) {
-                if (!options.customFields) options.customFields = {};
-                options.customFields.themeCode = process.env.THEME_CODE;
-            }
-            let bill_info;
-            try {
-                bill_info = await qiwi.create_bill(billId, options);
-            } catch (e) {
-                ctx.answerCbQuery('Ошибка создания счёта');
-                console.log(e);
-            }
-            let form_url = bill_info.payUrl;
-            bills.push({
-                id: billId,
-                amount: process.env.PRICE_PER_DAY * days,
-                user_id: ctx.from.id,
-                purchase: {
-                    type: 'subscribe',
-                    days: days
-                },
-                url: form_url
-            });
-            save_bills(bills);
-            let new_text =
-                '🔐 Доступ к приватной группе\\.\n' +
-                '*' + days + '* ' + text_days + ' \\- *' + days * process.env.PRICE_PER_DAY + '*р\\.';
-            ctx.editMessageText(new_text, {
-                parse_mode: 'MarkdownV2',
-                reply_markup: {
-                    inline_keyboard: [
-                        [
-                            { text: '👉 Оплатить', url: form_url },
-                            { text: '❌ Отмена', callback_data: 'back:private_group:cancel_bill' }
+                let billId = qiwi.generate_id();
+                let expirationDateTime = qiwi.get_expiration_date_by_day(1 / 24); // 1 Hour to pay
+                let options = {
+                    amount: {
+                        currency: 'RUB',
+                        value: parseFloat(chat.price_per_day * days).toFixed(2),
+                    },
+                    expirationDateTime: expirationDateTime,
+                    customer: {
+                        account: ctx.from.id.toString()
+                    }
+                }
+                if (process.env.THEME_CODE) {
+                    if (!options.customFields) options.customFields = {};
+                    options.customFields.themeCode = process.env.THEME_CODE;
+                }
+                let bill_info;
+                try {
+                    bill_info = await qiwi.create_bill(billId, options);
+                } catch (e) {
+                    ctx.answerCbQuery('Ошибка создания счёта');
+                    console.log(e);
+                }
+                let form_url = bill_info.payUrl;
+                bills.push({
+                    id: billId,
+                    amount: chat.price_per_day * days,
+                    user_id: ctx.from.id,
+                    purchase: {
+                        type: 'subscribe',
+                        chat_id: chat.chat_id,
+                        days: days
+                    },
+                    url: form_url
+                });
+                save_bills(bills);
+                let new_text =
+                    '🔐 Доступ к приватной группе\\.\n' +
+                    '*' + days + '* ' + text_days + ' \\- *' + days * chat.price_per_day + '*р\\.';
+                ctx.editMessageText(new_text, {
+                    parse_mode: 'MarkdownV2',
+                    reply_markup: {
+                        inline_keyboard: [
+                            [
+                                { text: '👉 Оплатить', url: form_url },
+                                { text: '❌ Отмена', callback_data: 'back:private_access:cancel_bill' }
+                            ]
                         ]
-                    ]
-                }
-            });
+                    }
+                });
+            }
         }
     } else if (command == 'cancel_bill') {
         let bills = get_bills();
